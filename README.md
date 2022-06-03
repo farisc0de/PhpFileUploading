@@ -17,6 +17,12 @@ PHP library for uploading files to a server
 
 take a look at the documentation and the examples
 
+## TODO
+
+```
+Image Manipulation
+```
+
 ## Copyright
 
 Developed by FarisCode
