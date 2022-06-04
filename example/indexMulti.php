@@ -1,9 +1,15 @@
 <?php
+include '../src/Utility.php';
 include '../src/Upload.php';
+include '../src/File.php';
 
 use Farisc0de\PhpFileUploading\Upload;
+use Farisc0de\PhpFileUploading\File;
+use Farisc0de\PhpFileUploading\Utility;
 
-$upload = new Upload();
+$util = new Utility();
+
+$upload = new Upload(utility: new Utility());
 
 $upload->setController('../src/');
 
@@ -15,10 +21,10 @@ $upload->setUploadFolder([
 $upload->enableProtection();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $files = $upload->fixArray($_FILES['file']);
+    $files = $util->fixArray($_FILES['file']);
 
     foreach ($files as $file) {
-        $upload->setUpload($file);
+        $upload->setUpload(new File($file));
 
         if ($upload->checkIfNotEmpty()) {
             if (!$upload->checkForbidden()) {
@@ -40,8 +46,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 echo "Not Image";
                 exit;
             }
-
-            $upload->hashName();
 
             $upload->upload();
         }

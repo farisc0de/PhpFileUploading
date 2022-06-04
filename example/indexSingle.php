@@ -1,9 +1,15 @@
 <?php
+
 include '../src/Upload.php';
+include '../src/File.php';
+include '../src/Utility.php';
 
+
+use Farisc0de\PhpFileUploading\File;
 use Farisc0de\PhpFileUploading\Upload;
+use Farisc0de\PhpFileUploading\Utility;
 
-$upload = new Upload();
+$upload = new Upload(utility: new Utility());
 
 $upload->setController('../src/');
 
@@ -15,7 +21,9 @@ $upload->setUploadFolder([
 $upload->enableProtection();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $upload->setUpload($_FILES['file']);
+    $file = new File($_FILES['file']);
+
+    $upload->setUpload($file);
 
     if ($upload->checkIfNotEmpty()) {
         if (!$upload->checkForbidden()) {
@@ -37,8 +45,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             echo "Not Image";
             exit;
         }
-
-        $upload->hashName();
 
         $upload->upload();
 
@@ -69,10 +75,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     <div>
         <ul>
-            <li>Filename: <?= $data['filename']; ?></li>
-            <li>Filehash: <?= $data['filehash']; ?></li>
-            <li>Filesize: <?= $data['filesize']; ?></li>
-            <li>Upload at: <?= $data['uploaddate']; ?></li>
+            <?php if (isset($data)) : ?>
+                <li>Filename: <?= $data['filename']; ?></li>
+                <li>Filehash: <?= $data['filehash']; ?></li>
+                <li>Filesize: <?= $data['filesize']; ?></li>
+                <li>Upload at: <?= $data['uploaddate']; ?></li>
+            <?php endif; ?>
         </ul>
     </div>
 </body>
