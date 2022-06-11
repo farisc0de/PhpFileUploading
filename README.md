@@ -13,6 +13,12 @@ PHP library for uploading files to a server
 3. Out Of The Box Functions
 4. Multi-File Upload Support
 
+## How to install
+
+```bash
+composer require farisc0de/phpfileuploading
+```
+
 ## How to Use
 
 take a look at the documentation and the examples
@@ -22,6 +28,10 @@ take a look at the documentation and the examples
 ```
 Image Manipulation
 ```
+
+## License
+
+MIT
 
 ## Copyright
 
