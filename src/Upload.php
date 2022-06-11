@@ -180,7 +180,6 @@ final class Upload
      */
     public function __construct(
         $file = null,
-        $utility = null,
         $upload_folder = [],
         $controller = null,
         $site_url = '',
@@ -194,7 +193,7 @@ final class Upload
         $user_id = null
     ) {
         $this->file = $file;
-        $this->util = $utility;
+        $this->util = new Utility();
         $this->upload_folder = $upload_folder;
         $this->controller = $this->util->sanitize($controller);
         $this->site_url = $this->util->sanitize($site_url);

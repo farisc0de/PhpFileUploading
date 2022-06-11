@@ -5,11 +5,8 @@ include '../src/File.php';
 
 use Farisc0de\PhpFileUploading\Upload;
 use Farisc0de\PhpFileUploading\File;
-use Farisc0de\PhpFileUploading\Utility;
 
-$util = new Utility();
-
-$upload = new Upload(utility: new Utility());
+$upload = new Upload();
 
 $upload->setController('../src/');
 
