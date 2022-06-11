@@ -329,13 +329,13 @@ final class Upload
     {
         $user_id = $this->getUserID();
 
-        if ($main_upload_folder = null) {
+        if ($main_upload_folder == null) {
             $main_upload_folder = $this->upload_folder;
         }
 
         $user_cloud = $main_upload_folder .
             DIRECTORY_SEPARATOR .
-            $user_id;
+            hash("sha1", $user_id);
 
         if (!file_exists($user_cloud)) {
             @mkdir($user_cloud);
@@ -349,13 +349,13 @@ final class Upload
     {
         $user_id = $this->getUserID();
 
-        if ($main_upload_folder = null) {
+        if ($main_upload_folder == null) {
             $main_upload_folder = $this->upload_folder;
         }
 
         $user_cloud = $main_upload_folder .
             DIRECTORY_SEPARATOR .
-            $user_id;
+            hash("sha1", $user_id);
 
         return $user_cloud;
     }
@@ -995,7 +995,7 @@ final class Upload
             return true;
         }
 
-        $this->user_id = hash("sha1", "user-" . session_id());
+        $this->user_id = (isset($_SESSION['user_id'])) ? $_SESSION['user_id'] : hash("sha1", "user-" . session_id());
 
         return true;
     }
