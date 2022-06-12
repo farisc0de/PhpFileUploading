@@ -334,7 +334,7 @@ final class Upload
 
         $user_cloud = $main_upload_folder .
             DIRECTORY_SEPARATOR .
-            hash("sha1", $user_id);
+            $user_id;
 
         if (!file_exists($user_cloud)) {
             @mkdir($user_cloud);
@@ -354,7 +354,7 @@ final class Upload
 
         $user_cloud = $main_upload_folder .
             DIRECTORY_SEPARATOR .
-            hash("sha1", $user_id);
+            $user_id;
 
         return $user_cloud;
     }
@@ -994,7 +994,9 @@ final class Upload
             return true;
         }
 
-        $this->user_id = (isset($_SESSION['user_id'])) ? $_SESSION['user_id'] : hash("sha1", "user-" . session_id());
+        $this->user_id = (isset($_SESSION['user_id'])) ?
+            $_SESSION['user_id'] :
+            hash("sha1", "user-" . session_id());
 
         return true;
     }
