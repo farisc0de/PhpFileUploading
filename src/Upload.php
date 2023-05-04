@@ -191,8 +191,8 @@ final class Upload
         $file_id = null,
         $user_id = null
     ) {
-        $this->file = $file;
         $this->util = $util;
+        $this->file = $file;
         $this->upload_folder = $upload_folder;
         $this->controller = $this->util->sanitize($controller);
         $this->site_url = $this->util->sanitize($site_url);
