@@ -178,6 +178,7 @@ final class Upload
      * @return void
      */
     public function __construct(
+        $util,
         $file = null,
         $upload_folder = [],
         $controller = null,
@@ -191,7 +192,7 @@ final class Upload
         $user_id = null
     ) {
         $this->file = $file;
-        $this->util = new Utility();
+        $this->util = $util;
         $this->upload_folder = $upload_folder;
         $this->controller = $this->util->sanitize($controller);
         $this->site_url = $this->util->sanitize($site_url);
@@ -260,7 +261,7 @@ final class Upload
      */
     public function setForbiddenFilter($forbidden_array)
     {
-        $this->name_array = $forbidden_array; // Custom name filter array
+        $this->name_array = $forbidden_array;
     }
     /**
      * Set Extension array to a custom list when needed
@@ -336,6 +337,14 @@ final class Upload
      * @return string
      *  Return the current user folder path
      */
+    /**
+     * Get the current user cloud folder
+     *
+     * @param string $main_upload_folder
+     * The main upload folder
+     *
+     * @return string
+     */
     public function getUserCloud($main_upload_folder = null)
     {
         $user_id = $this->getUserID();
@@ -352,7 +361,7 @@ final class Upload
     }
 
     /**
-     * Firewall 1: Check File Extension
+     * Check File Extension
      *
      * @return bool
      *  Return true it the uploaded file extenstion is allowed
@@ -369,7 +378,7 @@ final class Upload
     }
 
     /**
-     * Firewall 2: Check File MIME Type
+     * Check File MIME Type
      *
      * @return bool
      *  Return true if the uploaded file MIME type is allowed
@@ -389,7 +398,7 @@ final class Upload
     }
 
     /**
-     * Firewall 3: Check File Name is Forbidden
+     * Check File Name is Forbidden
      *
      * @return bool
      *  Return true if the name is forbidden
@@ -405,7 +414,7 @@ final class Upload
     }
 
     /**
-     * Firewall 4: Check file size limit
+     * Check file size limit
      *
      * @return bool
      *  Return true if the uploaded file size does not exceed the limit
@@ -421,7 +430,7 @@ final class Upload
     }
 
     /**
-     * Extra Firewall 1: Check an image dimenstions aginst the class dimenstions
+     * Check an image dimenstions aginst the class dimenstions
      *
      * @param int $opreation
      *  Filters opreations from 0 to 5
@@ -1021,5 +1030,20 @@ final class Upload
             hash("sha1", "user-" . session_id());
 
         return true;
+    }
+
+    /**
+     * Inject a dependency class to the main class
+     *
+     * @param string $class_name
+     *  The name of the class to inject
+     * @param object $class
+     *  The class object to inject
+     *
+     * @return void
+     */
+    public function injectClass($class_name, $class)
+    {
+        $this->$class_name = $class;
     }
 }
