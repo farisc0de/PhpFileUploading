@@ -889,6 +889,7 @@ final class Upload
             $data['downloadlink'] = $this->generateDownloadLink();
             $data['directlink'] = $this->generateDirectDownloadLink();
             $data['deletelink'] = $this->generateDeleteLink();
+            $data['editlink'] = $this->generateEditLink();
         }
 
         return json_encode($data);
