@@ -77,7 +77,7 @@ final class Upload
         ?string $user_id = null
     ) {
         $this->validateConstructorParams($upload_folder, $site_url, $size);
-        
+
         $this->util = $util;
         $this->file = $file;
         $this->upload_folder = $upload_folder;
@@ -91,7 +91,7 @@ final class Upload
         $this->user_id = $user_id;
     }
 
-    private function validateConstructorParams(array $upload_folder, string $site_url, string $size): void 
+    private function validateConstructorParams(array $upload_folder, string $site_url, string $size): void
     {
         if (!empty($upload_folder) && (!isset($upload_folder['folder_name']) || !isset($upload_folder['folder_path']))) {
             throw new InvalidArgumentException('Upload folder array must contain folder_name and folder_path keys');
@@ -114,7 +114,7 @@ final class Upload
     public function enableProtection(): void
     {
         $filterPath = realpath(__DIR__) . DIRECTORY_SEPARATOR . "filter.json";
-        
+
         if (!file_exists($filterPath)) {
             throw new RuntimeException('Filter configuration file not found');
         }
@@ -147,6 +147,23 @@ final class Upload
             throw new InvalidArgumentException('Filter array cannot be empty');
         }
         $this->filter_array = array_map([$this->util, 'sanitize'], $filter_array);
+    }
+
+    public function setUploadFolder(array $upload_folder): void
+    {
+        if (!isset($upload_folder['folder_name']) || !isset($upload_folder['folder_path'])) {
+            throw new InvalidArgumentException('Upload folder array must contain folder_name and folder_path keys');
+        }
+
+        $this->upload_folder = $upload_folder;
+    }
+
+    public function setSizeLimit(string $size): void
+    {
+        if (!preg_match('/^\d+\s*(?:B|KB|MB|GB|TB)$/i', $size)) {
+            throw new InvalidArgumentException('Invalid size format. Expected format: number followed by B/KB/MB/GB/TB');
+        }
+        $this->size = $this->util->sizeInBytes($size);
     }
 
     public function checkSize(): bool
@@ -196,8 +213,10 @@ final class Upload
                 break;
 
             case 2:
-                if ($this->max_width && $this->max_height && 
-                    ($width > $this->max_width || $height > $this->max_height)) {
+                if (
+                    $this->max_width && $this->max_height &&
+                    ($width > $this->max_width || $height > $this->max_height)
+                ) {
                     $this->addLog(['filename' => $this->file_name, "message" => 8]);
                     return false;
                 }
@@ -218,8 +237,10 @@ final class Upload
                 break;
 
             case 5:
-                if ($this->min_width && $this->min_height && 
-                    ($width < $this->min_width || $height < $this->min_height)) {
+                if (
+                    $this->min_width && $this->min_height &&
+                    ($width < $this->min_width || $height < $this->min_height)
+                ) {
                     $this->addLog(['filename' => $this->file_name, "message" => 12]);
                     return false;
                 }
@@ -259,7 +280,7 @@ final class Upload
 
         try {
             $this->validateUpload();
-            
+
             if ($this->file_name === null) {
                 $this->file_name = $this->file->getName();
             }
@@ -314,7 +335,7 @@ final class Upload
 
         try {
             $targetPath = $this->upload_folder['folder_path'] . DIRECTORY_SEPARATOR . $filename;
-            
+
             if (file_exists($targetPath)) {
                 throw new RuntimeException('File already exists');
             }
@@ -367,7 +388,7 @@ final class Upload
     {
         $user_id = $this->getUserID();
         $upload_folder = $main_upload_folder ?? $this->upload_folder['folder_path'];
-        
+
         $user_cloud = $upload_folder . DIRECTORY_SEPARATOR . $user_id;
 
         if (!file_exists($user_cloud)) {
@@ -383,7 +404,7 @@ final class Upload
     {
         $user_id = $this->getUserID();
         $upload_folder = $main_upload_folder ?? $this->upload_folder['folder_path'];
-        
+
         return $upload_folder . DIRECTORY_SEPARATOR . $user_id;
     }
 
@@ -412,8 +433,10 @@ final class Upload
             throw new RuntimeException('Failed to determine file MIME type');
         }
 
-        if ($this->filter_array[$this->file->getExtension()] !== $mime ||
-            $mime !== $this->file->getMime()) {
+        if (
+            $this->filter_array[$this->file->getExtension()] !== $mime ||
+            $mime !== $this->file->getMime()
+        ) {
             $this->addLog(['filename' => $this->file_name, "message" => 1]);
             return false;
         }
@@ -555,7 +578,7 @@ final class Upload
             throw new RuntimeException('No file has been set');
         }
 
-        $this->file_name = hash("sha256", $this->file->getFileHash() . uniqid()) . 
+        $this->file_name = hash("sha256", $this->file->getFileHash() . uniqid()) .
             "." . $this->file->getExtension();
         $this->is_hashed = true;
 
@@ -565,7 +588,7 @@ final class Upload
     public function createUploadFolder(string $folder_name): void
     {
         $sanitized_folder = $this->util->sanitize($folder_name);
-        
+
         if (!file_exists($sanitized_folder) && !is_dir($sanitized_folder)) {
             if (!@mkdir($sanitized_folder, 0755, true)) {
                 throw new RuntimeException('Failed to create upload folder');
@@ -596,7 +619,7 @@ final class Upload
             throw new RuntimeException('Failed to scan upload directory');
         }
 
-        return array_filter($files, function($file) {
+        return array_filter($files, function ($file) {
             return !in_array($file, ['.', '..']);
         });
     }
