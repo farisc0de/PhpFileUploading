@@ -10,7 +10,7 @@ use Exception;
  * PHP Library to help you build your own file sharing website.
  * Supports enhanced file filtering with categorized MIME types and size limits.
  *
- * @version 2.1.0
+ * @version 2.6.0
  * @category File_Upload
  * @package PhpFileUploading
  * @author fariscode <farisksa79@gmail.com>
@@ -143,12 +143,12 @@ final class Upload
         // Load basic filter arrays
         $this->name_array = $filters['forbidden'] ?? [];
         $this->filter_array = $filters['extensions'] ?? [];
-        
+
         // Load new structure elements if available
         if (isset($filters['size_limits']) && is_array($filters['size_limits'])) {
             $this->size_limits = $filters['size_limits'];
         }
-        
+
         if (isset($filters['categories']) && is_array($filters['categories'])) {
             $this->categories = $filters['categories'];
         }
@@ -192,18 +192,18 @@ final class Upload
         if (!$this->file) {
             throw new RuntimeException('No file has been set');
         }
-        
+
         // Get file category based on MIME type
         $category = $this->getFileCategory();
         $sizeLimit = $this->size; // Default size limit
-        
+
         // Use category-specific size limit if available
         if (!empty($this->size_limits) && isset($this->size_limits[$category])) {
             $sizeLimit = $this->util->sizeInBytes($this->size_limits[$category]);
         } elseif (!empty($this->size_limits) && isset($this->size_limits['default'])) {
             $sizeLimit = $this->util->sizeInBytes($this->size_limits['default']);
         }
-        
+
         if ($this->file->getSize() > $sizeLimit) {
             $this->addLog(['filename' => $this->file_name, "message" => 4]);
             return false;
@@ -211,7 +211,7 @@ final class Upload
 
         return true;
     }
-    
+
     /**
      * Determine the category of the current file based on its MIME type
      *
@@ -222,9 +222,9 @@ final class Upload
         if (!$this->file) {
             throw new RuntimeException('No file has been set');
         }
-        
+
         $mime = $this->file->getMime();
-        
+
         // If categories are defined in filter.json
         if (!empty($this->categories)) {
             foreach ($this->categories as $category => $mimeTypes) {
@@ -233,7 +233,7 @@ final class Upload
                 }
             }
         }
-        
+
         // Fallback category detection based on MIME type prefix
         if (strpos($mime, 'image/') === 0) {
             return 'image';
@@ -241,19 +241,23 @@ final class Upload
             return 'audio';
         } elseif (strpos($mime, 'video/') === 0) {
             return 'video';
-        } elseif (strpos($mime, 'application/pdf') === 0 || 
-                 strpos($mime, 'application/msword') === 0 ||
-                 strpos($mime, 'application/vnd.openxmlformats-officedocument') === 0 ||
-                 strpos($mime, 'text/') === 0) {
+        } elseif (
+            strpos($mime, 'application/pdf') === 0 ||
+            strpos($mime, 'application/msword') === 0 ||
+            strpos($mime, 'application/vnd.openxmlformats-officedocument') === 0 ||
+            strpos($mime, 'text/') === 0
+        ) {
             return 'document';
-        } elseif (strpos($mime, 'application/zip') === 0 ||
-                 strpos($mime, 'application/x-rar') === 0 ||
-                 strpos($mime, 'application/x-7z') === 0 ||
-                 strpos($mime, 'application/x-tar') === 0 ||
-                 strpos($mime, 'application/gzip') === 0) {
+        } elseif (
+            strpos($mime, 'application/zip') === 0 ||
+            strpos($mime, 'application/x-rar') === 0 ||
+            strpos($mime, 'application/x-7z') === 0 ||
+            strpos($mime, 'application/x-tar') === 0 ||
+            strpos($mime, 'application/gzip') === 0
+        ) {
             return 'archive';
         }
-        
+
         return 'other';
     }
 
@@ -336,7 +340,7 @@ final class Upload
         if (!$this->file) {
             throw new RuntimeException('No file has been set');
         }
-        
+
         // First check using the categories if available
         if (!empty($this->categories) && isset($this->categories['images'])) {
             if (in_array($this->file->getMime(), $this->categories['images'], true)) {
@@ -345,7 +349,7 @@ final class Upload
         } else if (in_array($this->file->getMime(), self::ALLOWED_IMAGE_MIMES, true)) {
             return true;
         }
-        
+
         $this->addLog(['filename' => $this->file_name, "message" => 13]);
         return false;
     }
@@ -543,10 +547,10 @@ final class Upload
             $this->addLog(['filename' => $this->file_name, "message" => 2]);
             return false;
         }
-        
+
         $extension = $this->file->getExtension();
         $expectedMime = $this->filter_array[$extension] ?? null;
-        
+
         // If the extension doesn't exist in our filter array
         if ($expectedMime === null) {
             $this->addLog(['filename' => $this->file_name, "message" => 1]);
@@ -558,7 +562,7 @@ final class Upload
             $this->addLog(['filename' => $this->file_name, "message" => 1]);
             return false;
         }
-        
+
         return true;
     }
 
