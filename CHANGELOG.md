@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.1.0] - 2025-05-03
+
+Enhanced file filtering and validation with a more comprehensive approach to file type management.
+
+### Added
+- Enhanced filter.json structure with version tracking
+- Added categorized MIME types for better file type validation
+- Added category-specific file size limits
+- Expanded the forbidden files list for improved security
+- Added support for more file extensions and MIME types
+
+### Changed
+- Updated Upload class to use the enhanced filter.json structure
+- Improved file category detection based on MIME types
+- Enhanced size limit validation with category-specific limits
+- Improved MIME type validation with better error handling
+- Updated isImage() method to use the new categories structure
+
 ## [2.0.0] - 2025-01-14
 
 A major update focusing on modernizing the codebase with enhanced type safety, improved error handling, and new features across all core classes.

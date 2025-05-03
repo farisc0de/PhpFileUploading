@@ -12,7 +12,7 @@ use GdImage;
  * Provides comprehensive image manipulation functionality including
  * resizing, cropping, watermarking, and format conversion.
  *
- * @version 1.5.3
+ * @version 2.1.0
  * @category File_Upload
  * @package PhpFileUploading
  * @author fariscode <farisksa79@gmail.com>

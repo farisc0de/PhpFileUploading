@@ -13,7 +13,7 @@ use finfo;
  * It wraps the $_FILES array and provides methods for accessing file information
  * and performing common file operations.
  *
- * @version 1.5.3
+ * @version 2.1.0
  * @category File_Upload
  * @package PhpFileUploading
  * @author fariscode <farisksa79@gmail.com>
