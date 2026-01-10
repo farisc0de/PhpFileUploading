@@ -132,45 +132,140 @@ $uploadManager->setLogger($logger);
 $uploadManager->setHashFilenames(true);
 
 // Handle upload request
-$response = ['success' => false, 'message' => '', 'data' => null];
+$response = ['success' => false, 'message' => '', 'data' => null, 'files' => []];
+$utility = new Utility();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        if (!isset($_FILES['file']) || $_FILES['file']['error'] === UPLOAD_ERR_NO_FILE) {
-            throw new \RuntimeException('No file uploaded');
-        }
-
-        $file = new File($_FILES['file'], new Utility());
         $clientIp = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-
-        // Upload with rate limiting by IP
-        $result = $uploadManager->upload($file, 'user-uploads', $clientIp);
-
-        // Set rate limit headers
-        foreach ($result->getRateLimitHeaders() as $header => $value) {
-            header("{$header}: {$value}");
+        
+        // Check if files were uploaded
+        if (!isset($_FILES['files']) && !isset($_FILES['file'])) {
+            throw new \RuntimeException('No files uploaded');
         }
 
-        if ($result->isSuccess()) {
-            $response = [
-                'success' => true,
-                'message' => 'File uploaded successfully',
-                'data' => [
-                    'filename' => $result->getStoredFilename(),
-                    'original_name' => $result->getOriginalFilename(),
-                    'url' => $result->getPublicUrl(),
-                    'size' => $result->getFileSize(),
-                    'mime_type' => $result->getMimeType(),
-                    'hash' => $result->getFileHash(),
-                ],
-            ];
+        // Determine if single or multiple file upload
+        $isMultiple = isset($_FILES['files']);
+        $uploadedFiles = [];
+        $failedFiles = [];
+
+        if ($isMultiple) {
+            // Normalize the $_FILES array for multiple uploads
+            $normalizedFiles = $utility->normalizeFileArray($_FILES['files']);
+            
+            foreach ($normalizedFiles as $fileData) {
+                if ($fileData['error'] === UPLOAD_ERR_NO_FILE) {
+                    continue;
+                }
+                
+                try {
+                    $file = new File($fileData, $utility);
+                    $result = $uploadManager->upload($file, 'user-uploads', $clientIp);
+                    
+                    if ($result->isSuccess()) {
+                        $uploadedFiles[] = [
+                            'filename' => $result->getStoredFilename(),
+                            'original_name' => $result->getOriginalFilename(),
+                            'url' => $result->getPublicUrl(),
+                            'size' => $result->getFileSize(),
+                            'mime_type' => $result->getMimeType(),
+                            'hash' => $result->getFileHash(),
+                        ];
+                    } else {
+                        $failedFiles[] = [
+                            'original_name' => $fileData['name'],
+                            'error' => $result->getError(),
+                        ];
+                    }
+                    
+                    // Set rate limit headers from last result
+                    foreach ($result->getRateLimitHeaders() as $header => $value) {
+                        header("{$header}: {$value}");
+                    }
+                } catch (\Exception $e) {
+                    $failedFiles[] = [
+                        'original_name' => $fileData['name'],
+                        'error' => $e->getMessage(),
+                    ];
+                }
+            }
+            
+            if (empty($uploadedFiles) && empty($failedFiles)) {
+                throw new \RuntimeException('No files selected');
+            }
+            
+            $totalFiles = count($uploadedFiles) + count($failedFiles);
+            $successCount = count($uploadedFiles);
+            
+            if ($successCount === $totalFiles) {
+                $response = [
+                    'success' => true,
+                    'message' => $successCount === 1 
+                        ? 'File uploaded successfully' 
+                        : "{$successCount} files uploaded successfully",
+                    'data' => $uploadedFiles[0] ?? null,
+                    'files' => $uploadedFiles,
+                ];
+            } elseif ($successCount > 0) {
+                $response = [
+                    'success' => true,
+                    'message' => "{$successCount} of {$totalFiles} files uploaded successfully",
+                    'data' => $uploadedFiles[0] ?? null,
+                    'files' => $uploadedFiles,
+                    'failed' => $failedFiles,
+                ];
+            } else {
+                http_response_code(400);
+                $response = [
+                    'success' => false,
+                    'message' => 'All uploads failed',
+                    'data' => null,
+                    'failed' => $failedFiles,
+                ];
+            }
         } else {
-            http_response_code(400);
-            $response = [
-                'success' => false,
-                'message' => $result->getError(),
-                'data' => null,
-            ];
+            // Single file upload (backward compatible)
+            if ($_FILES['file']['error'] === UPLOAD_ERR_NO_FILE) {
+                throw new \RuntimeException('No file uploaded');
+            }
+            
+            $file = new File($_FILES['file'], $utility);
+            $result = $uploadManager->upload($file, 'user-uploads', $clientIp);
+
+            // Set rate limit headers
+            foreach ($result->getRateLimitHeaders() as $header => $value) {
+                header("{$header}: {$value}");
+            }
+
+            if ($result->isSuccess()) {
+                $response = [
+                    'success' => true,
+                    'message' => 'File uploaded successfully',
+                    'data' => [
+                        'filename' => $result->getStoredFilename(),
+                        'original_name' => $result->getOriginalFilename(),
+                        'url' => $result->getPublicUrl(),
+                        'size' => $result->getFileSize(),
+                        'mime_type' => $result->getMimeType(),
+                        'hash' => $result->getFileHash(),
+                    ],
+                    'files' => [[
+                        'filename' => $result->getStoredFilename(),
+                        'original_name' => $result->getOriginalFilename(),
+                        'url' => $result->getPublicUrl(),
+                        'size' => $result->getFileSize(),
+                        'mime_type' => $result->getMimeType(),
+                        'hash' => $result->getFileHash(),
+                    ]],
+                ];
+            } else {
+                http_response_code(400);
+                $response = [
+                    'success' => false,
+                    'message' => $result->getError(),
+                    'data' => null,
+                ];
+            }
         }
 
     } catch (\Farisc0de\PhpFileUploading\Exception\ValidationException $e) {
@@ -357,6 +452,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: #666;
             font-size: 12px;
         }
+        .file-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        .file-item {
+            background: #f0f4ff;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .file-item .name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #333;
+            font-size: 14px;
+        }
+        .file-item .size {
+            color: #666;
+            font-size: 12px;
+        }
+        .file-item .remove {
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .file-item .remove:hover {
+            background: #ff3344;
+        }
+        .upload-mode-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .upload-mode-toggle button {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        .upload-mode-toggle button.active {
+            border-color: #667eea;
+            background: #f0f4ff;
+            color: #667eea;
+        }
+        .upload-mode-toggle button:hover {
+            border-color: #667eea;
+        }
+        .file-count {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -368,16 +535,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="message success">
                 <?= htmlspecialchars($response['message']) ?>
             </div>
-            <?php if ($response['data']): ?>
-            <div class="file-info">
-                <p><strong>Filename:</strong> <?= htmlspecialchars($response['data']['filename']) ?></p>
-                <p><strong>Original:</strong> <?= htmlspecialchars($response['data']['original_name']) ?></p>
-                <p><strong>Size:</strong> <?= number_format($response['data']['size']) ?> bytes</p>
-                <p><strong>Type:</strong> <?= htmlspecialchars($response['data']['mime_type']) ?></p>
-                <?php if ($response['data']['url']): ?>
-                <p><strong>URL:</strong> <a href="<?= htmlspecialchars($response['data']['url']) ?>" target="_blank">View File</a></p>
-                <?php endif; ?>
-            </div>
+            <?php if (!empty($response['files'])): ?>
+                <?php foreach ($response['files'] as $index => $fileData): ?>
+                <div class="file-info">
+                    <p><strong>File <?= $index + 1 ?>:</strong></p>
+                    <p><strong>Filename:</strong> <?= htmlspecialchars($fileData['filename']) ?></p>
+                    <p><strong>Original:</strong> <?= htmlspecialchars($fileData['original_name']) ?></p>
+                    <p><strong>Size:</strong> <?= number_format($fileData['size']) ?> bytes</p>
+                    <p><strong>Type:</strong> <?= htmlspecialchars($fileData['mime_type']) ?></p>
+                    <?php if (!empty($fileData['url'])): ?>
+                    <p><strong>URL:</strong> <a href="<?= htmlspecialchars($fileData['url']) ?>" target="_blank">View File</a></p>
+                    <?php endif; ?>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+            <?php if (!empty($response['failed'])): ?>
+                <div class="message error" style="margin-top: 15px;">
+                    <strong>Failed uploads:</strong>
+                    <ul style="margin: 10px 0 0 20px;">
+                    <?php foreach ($response['failed'] as $failed): ?>
+                        <li><?= htmlspecialchars($failed['original_name']) ?>: <?= htmlspecialchars($failed['error']) ?></li>
+                    <?php endforeach; ?>
+                    </ul>
+                </div>
             <?php endif; ?>
         <?php elseif ($response['message']): ?>
             <div class="message error">
@@ -385,20 +565,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         <?php endif; ?>
 
+        <div class="upload-mode-toggle">
+            <button type="button" id="singleMode" class="active">Single File</button>
+            <button type="button" id="multiMode">Multiple Files</button>
+        </div>
+
         <form method="post" enctype="multipart/form-data" id="uploadForm">
             <div class="upload-area" id="dropZone">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                 </svg>
-                <p>Drag & drop your file here or click to browse</p>
-                <span class="formats">Allowed: JPG, PNG, GIF, PDF, DOC, DOCX (max 10MB)</span>
+                <p id="dropText">Drag & drop your file here or click to browse</p>
+                <span class="formats">Allowed: JPG, PNG, GIF, PDF, DOC, DOCX (max 10MB each)</span>
                 <input type="file" name="file" id="fileInput" accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx">
+                <input type="file" name="files[]" id="fileInputMulti" accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx" multiple style="display:none;">
             </div>
 
+            <!-- Single file display -->
             <div class="selected-file" id="selectedFile">
                 <span class="name" id="fileName"></span>
                 <span class="size" id="fileSize"></span>
             </div>
+
+            <!-- Multiple files display -->
+            <div class="file-list" id="fileList" style="display:none;"></div>
+            <div class="file-count" id="fileCount" style="display:none;"></div>
 
             <div class="progress" id="progress">
                 <div class="progress-bar" id="progressBar"></div>
@@ -411,16 +602,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script>
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
+        const fileInputMulti = document.getElementById('fileInputMulti');
         const selectedFile = document.getElementById('selectedFile');
         const fileName = document.getElementById('fileName');
         const fileSize = document.getElementById('fileSize');
+        const fileList = document.getElementById('fileList');
+        const fileCount = document.getElementById('fileCount');
+        const dropText = document.getElementById('dropText');
         const form = document.getElementById('uploadForm');
         const progress = document.getElementById('progress');
         const progressBar = document.getElementById('progressBar');
         const submitBtn = document.getElementById('submitBtn');
+        const singleModeBtn = document.getElementById('singleMode');
+        const multiModeBtn = document.getElementById('multiMode');
+
+        let isMultiMode = false;
+        let selectedFiles = [];
+
+        // Mode toggle
+        singleModeBtn.addEventListener('click', () => {
+            isMultiMode = false;
+            singleModeBtn.classList.add('active');
+            multiModeBtn.classList.remove('active');
+            dropText.textContent = 'Drag & drop your file here or click to browse';
+            submitBtn.textContent = 'Upload File';
+            fileInput.style.display = '';
+            fileInputMulti.style.display = 'none';
+            fileList.style.display = 'none';
+            fileCount.style.display = 'none';
+            selectedFile.classList.remove('show');
+            selectedFiles = [];
+            fileInput.value = '';
+            fileInputMulti.value = '';
+        });
+
+        multiModeBtn.addEventListener('click', () => {
+            isMultiMode = true;
+            multiModeBtn.classList.add('active');
+            singleModeBtn.classList.remove('active');
+            dropText.textContent = 'Drag & drop your files here or click to browse';
+            submitBtn.textContent = 'Upload Files';
+            fileInput.style.display = 'none';
+            fileInputMulti.style.display = '';
+            selectedFile.classList.remove('show');
+            fileList.style.display = 'block';
+            fileCount.style.display = 'block';
+            selectedFiles = [];
+            fileInput.value = '';
+            fileInputMulti.value = '';
+            updateFileList();
+        });
 
         // Click to upload
-        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('click', () => {
+            if (isMultiMode) {
+                fileInputMulti.click();
+            } else {
+                fileInput.click();
+            }
+        });
 
         // Drag and drop
         dropZone.addEventListener('dragover', (e) => {
@@ -436,13 +676,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             e.preventDefault();
             dropZone.classList.remove('dragover');
             if (e.dataTransfer.files.length) {
-                fileInput.files = e.dataTransfer.files;
-                updateSelectedFile();
+                if (isMultiMode) {
+                    addFiles(e.dataTransfer.files);
+                } else {
+                    fileInput.files = e.dataTransfer.files;
+                    updateSelectedFile();
+                }
             }
         });
 
-        // File selection
+        // File selection - single
         fileInput.addEventListener('change', updateSelectedFile);
+
+        // File selection - multiple
+        fileInputMulti.addEventListener('change', () => {
+            addFiles(fileInputMulti.files);
+        });
+
+        function addFiles(files) {
+            for (let i = 0; i < files.length; i++) {
+                // Avoid duplicates
+                if (!selectedFiles.some(f => f.name === files[i].name && f.size === files[i].size)) {
+                    selectedFiles.push(files[i]);
+                }
+            }
+            updateFileList();
+            updateFileInputFromList();
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            updateFileList();
+            updateFileInputFromList();
+        }
+
+        function updateFileInputFromList() {
+            // Create a new DataTransfer to update the file input
+            const dt = new DataTransfer();
+            selectedFiles.forEach(file => dt.items.add(file));
+            fileInputMulti.files = dt.files;
+        }
+
+        function updateFileList() {
+            fileList.innerHTML = '';
+            selectedFiles.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                item.innerHTML = `
+                    <span class="name">${escapeHtml(file.name)}</span>
+                    <span class="size">${formatBytes(file.size)}</span>
+                    <button type="button" class="remove" onclick="removeFile(${index})">&times;</button>
+                `;
+                fileList.appendChild(item);
+            });
+            
+            if (selectedFiles.length > 0) {
+                const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
+                fileCount.textContent = `${selectedFiles.length} file(s) selected (${formatBytes(totalSize)} total)`;
+                fileCount.style.display = 'block';
+            } else {
+                fileCount.textContent = 'No files selected';
+            }
+        }
 
         function updateSelectedFile() {
             if (fileInput.files.length) {
@@ -463,20 +758,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         // Form submission with progress
         form.addEventListener('submit', function(e) {
-            if (!fileInput.files.length) {
+            const hasFiles = isMultiMode ? selectedFiles.length > 0 : fileInput.files.length > 0;
+            
+            if (!hasFiles) {
                 e.preventDefault();
-                alert('Please select a file');
+                alert('Please select at least one file');
                 return;
             }
 
             submitBtn.disabled = true;
             submitBtn.textContent = 'Uploading...';
             progress.style.display = 'block';
-
-            // For non-AJAX submission, just let the form submit
-            // For AJAX, you could use XMLHttpRequest or fetch with progress
         });
     </script>
 </body>
