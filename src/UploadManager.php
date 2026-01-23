@@ -387,15 +387,16 @@ class UploadManager
     }
 
     /**
-     * Generate a secure file ID
+     * Generate a secure file ID (static version)
      * 
+     * Can be called without an UploadManager instance.
      * Uses cryptographically secure random bytes combined with high-resolution
      * timestamp for uniqueness and unpredictability.
      *
      * @param string $algorithm Hash algorithm to use (default: sha256)
      * @return string The generated file ID
      */
-    public function generateFileId(string $algorithm = 'sha256'): string
+    public static function createFileId(string $algorithm = 'sha256'): string
     {
         $entropy = sprintf(
             'file-%s-%s-%s',
@@ -404,7 +405,18 @@ class UploadManager
             uniqid('', true)
         );
         
-        $this->fileId = hash($algorithm, $entropy);
+        return hash($algorithm, $entropy);
+    }
+
+    /**
+     * Generate a secure file ID and set it on this instance
+     *
+     * @param string $algorithm Hash algorithm to use (default: sha256)
+     * @return string The generated file ID
+     */
+    public function generateFileId(string $algorithm = 'sha256'): string
+    {
+        $this->fileId = self::createFileId($algorithm);
         
         $this->logDebug('Generated file ID: {file_id}', ['file_id' => $this->fileId]);
         
@@ -412,17 +424,16 @@ class UploadManager
     }
 
     /**
-     * Generate a secure user ID
+     * Generate a secure user ID (static version)
      * 
-     * Can operate in two modes:
-     * - Session-based: Uses PHP session for persistent user identification
-     * - Stateless: Generates a random ID without session dependency
+     * Can be called without an UploadManager instance.
+     * Supports session-based or stateless generation.
      *
      * @param bool $stateless If true, generates ID without session (for APIs/CLI)
      * @return string The generated or retrieved user ID
      * @throws \Farisc0de\PhpFileUploading\Exception\ConfigurationException If sessions are required but unavailable
      */
-    public function generateUserId(bool $stateless = false): string
+    public static function createUserId(bool $stateless = false): string
     {
         // Stateless mode - no session dependency (for APIs, CLI, microservices)
         if ($stateless) {
@@ -433,11 +444,7 @@ class UploadManager
                 getmypid()
             );
             
-            $this->userId = hash('sha256', $entropy);
-            
-            $this->logDebug('Generated stateless user ID: {user_id}', ['user_id' => $this->userId]);
-            
-            return $this->userId;
+            return hash('sha256', $entropy);
         }
 
         // Session-based mode
@@ -458,10 +465,8 @@ class UploadManager
         }
 
         // Check for existing session user ID
-        if (isset($_SESSION['user_id'])) {
-            $this->userId = $_SESSION['user_id'];
-            $this->logDebug('Retrieved existing user ID from session: {user_id}', ['user_id' => $this->userId]);
-            return $this->userId;
+        if (isset($_SESSION['upload_user_id'])) {
+            return $_SESSION['upload_user_id'];
         }
 
         // Generate new session-based user ID
@@ -472,10 +477,28 @@ class UploadManager
             hrtime(true)
         );
         
-        $this->userId = hash('sha256', $entropy);
-        $_SESSION['user_id'] = $this->userId;
+        $userId = hash('sha256', $entropy);
+        $_SESSION['upload_user_id'] = $userId;
         
-        $this->logDebug('Generated session-based user ID: {user_id}', ['user_id' => $this->userId]);
+        return $userId;
+    }
+
+    /**
+     * Generate a secure user ID and set it on this instance
+     * 
+     * Can operate in two modes:
+     * - Session-based: Uses PHP session for persistent user identification
+     * - Stateless: Generates a random ID without session dependency
+     *
+     * @param bool $stateless If true, generates ID without session (for APIs/CLI)
+     * @return string The generated or retrieved user ID
+     * @throws \Farisc0de\PhpFileUploading\Exception\ConfigurationException If sessions are required but unavailable
+     */
+    public function generateUserId(bool $stateless = false): string
+    {
+        $this->userId = self::createUserId($stateless);
+        
+        $this->logDebug('User ID set: {user_id}', ['user_id' => $this->userId]);
         
         return $this->userId;
     }
