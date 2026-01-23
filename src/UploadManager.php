@@ -37,6 +37,8 @@ class UploadManager
 
     private bool $hashFilenames = true;
     private string $hashAlgorithm = 'sha256';
+    private ?string $siteUrl = null;
+    private ?string $userId = null;
 
     public function __construct(
         StorageInterface $storage,
@@ -169,6 +171,20 @@ class UploadManager
                 $result->setPublicUrl($this->storage->publicUrl($fullPath));
             } catch (\Exception $e) {
                 // Public URL not available
+            }
+
+            // Set link generation data
+            if ($this->siteUrl !== null) {
+                $result->setSiteUrl($this->siteUrl);
+                $result->setFolderName($destination);
+                $result->setHashId($file->getFileHash());
+                
+                if ($this->userId !== null) {
+                    $result->setUserId($this->userId);
+                }
+                
+                // Generate a file ID based on the hash
+                $result->setFileId(substr(hash('sha256', $file->getFileHash() . $filename), 0, 16));
             }
 
             // Dispatch after upload event
@@ -315,6 +331,40 @@ class UploadManager
     public function getStorage(): StorageInterface
     {
         return $this->storage;
+    }
+
+    /**
+     * Set site URL for link generation
+     */
+    public function setSiteUrl(?string $url): self
+    {
+        $this->siteUrl = $url ? rtrim($url, '/') : null;
+        return $this;
+    }
+
+    /**
+     * Get site URL
+     */
+    public function getSiteUrl(): ?string
+    {
+        return $this->siteUrl;
+    }
+
+    /**
+     * Set user ID for link generation
+     */
+    public function setUserId(?string $userId): self
+    {
+        $this->userId = $userId;
+        return $this;
+    }
+
+    /**
+     * Get user ID
+     */
+    public function getUserId(): ?string
+    {
+        return $this->userId;
     }
 
     /**
