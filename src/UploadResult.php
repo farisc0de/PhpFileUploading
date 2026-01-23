@@ -402,14 +402,13 @@ class UploadResult
      */
     public function getDownloadLink(): ?string
     {
-        if (empty($this->siteUrl) || empty($this->userId) || empty($this->fileId)) {
+        if (empty($this->siteUrl) || empty($this->fileId)) {
             return null;
         }
 
         return sprintf(
-            "%s/download.php?user_id=%s&file_id=%s",
+            "%s/download.php?file_id=%s",
             $this->siteUrl,
-            urlencode($this->userId),
             urlencode($this->fileId)
         );
     }
@@ -436,16 +435,15 @@ class UploadResult
      */
     public function getDeleteLink(): ?string
     {
-        if (empty($this->siteUrl) || empty($this->userId) || empty($this->fileId) || empty($this->hashId)) {
+        if (empty($this->siteUrl) || empty($this->userId) || empty($this->fileId)) {
             return null;
         }
 
         return sprintf(
-            "%s/delete.php?user_id=%s&file_id=%s&hash_id=%s",
+            "%s/delete.php?file_id=%s&user_id=%s",
             $this->siteUrl,
-            urlencode($this->userId),
             urlencode($this->fileId),
-            urlencode($this->hashId)
+            urlencode($this->userId)
         );
     }
 
@@ -454,16 +452,15 @@ class UploadResult
      */
     public function getEditLink(): ?string
     {
-        if (empty($this->siteUrl) || empty($this->userId) || empty($this->fileId) || empty($this->hashId)) {
+        if (empty($this->siteUrl) || empty($this->userId) || empty($this->fileId)) {
             return null;
         }
 
         return sprintf(
-            "%s/edit.php?user_id=%s&file_id=%s&hash_id=%s",
+            "%s/edit.php?file_id=%s&user_id=%s",
             $this->siteUrl,
-            urlencode($this->userId),
             urlencode($this->fileId),
-            urlencode($this->hashId)
+            urlencode($this->userId)
         );
     }
 

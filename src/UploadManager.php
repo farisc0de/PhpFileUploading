@@ -39,6 +39,7 @@ class UploadManager
     private string $hashAlgorithm = 'sha256';
     private ?string $siteUrl = null;
     private ?string $userId = null;
+    private ?string $fileId = null;
 
     public function __construct(
         StorageInterface $storage,
@@ -183,8 +184,9 @@ class UploadManager
                     $result->setUserId($this->userId);
                 }
                 
-                // Generate a file ID based on the hash
-                $result->setFileId(substr(hash('sha256', $file->getFileHash() . $filename), 0, 16));
+                if ($this->fileId !== null) {
+                    $result->setFileId($this->fileId);
+                }
             }
 
             // Dispatch after upload event
@@ -365,6 +367,23 @@ class UploadManager
     public function getUserId(): ?string
     {
         return $this->userId;
+    }
+
+    /**
+     * Set file ID for link generation (from your database)
+     */
+    public function setFileId(?string $fileId): self
+    {
+        $this->fileId = $fileId;
+        return $this;
+    }
+
+    /**
+     * Get file ID
+     */
+    public function getFileId(): ?string
+    {
+        return $this->fileId;
     }
 
     /**
