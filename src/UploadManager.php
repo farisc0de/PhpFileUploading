@@ -465,8 +465,8 @@ class UploadManager
         }
 
         // Check for existing session user ID
-        if (isset($_SESSION['upload_user_id'])) {
-            return $_SESSION['upload_user_id'];
+        if (isset($_SESSION['user_id'])) {
+            return $_SESSION['user_id'];
         }
 
         // Generate new session-based user ID
@@ -478,7 +478,7 @@ class UploadManager
         );
         
         $userId = hash('sha256', $entropy);
-        $_SESSION['upload_user_id'] = $userId;
+        $_SESSION['user_id'] = $userId;
         
         return $userId;
     }
