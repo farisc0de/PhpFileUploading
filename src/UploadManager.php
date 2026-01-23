@@ -40,6 +40,7 @@ class UploadManager
     private ?string $siteUrl = null;
     private ?string $userId = null;
     private ?string $fileId = null;
+    private ?string $baseFolderName = null;
 
     public function __construct(
         StorageInterface $storage,
@@ -177,7 +178,13 @@ class UploadManager
             // Set link generation data
             if ($this->siteUrl !== null) {
                 $result->setSiteUrl($this->siteUrl);
-                $result->setFolderName($destination);
+                
+                // Use baseFolderName if set, otherwise combine with destination
+                $folderName = $this->baseFolderName ?? '';
+                if (!empty($destination)) {
+                    $folderName = $folderName ? $folderName . '/' . $destination : $destination;
+                }
+                $result->setFolderName($folderName);
                 $result->setHashId($file->getFileHash());
                 
                 if ($this->userId !== null) {
@@ -384,6 +391,28 @@ class UploadManager
     public function getFileId(): ?string
     {
         return $this->fileId;
+    }
+
+    /**
+     * Set base folder name for direct link generation
+     * 
+     * Use this when your storage root is already a subfolder (e.g., uploads/user123)
+     * and you need the direct link to include that path.
+     * 
+     * @param string|null $folderName The base folder path (e.g., 'uploads/user123')
+     */
+    public function setBaseFolderName(?string $folderName): self
+    {
+        $this->baseFolderName = $folderName ? trim($folderName, '/') : null;
+        return $this;
+    }
+
+    /**
+     * Get base folder name
+     */
+    public function getBaseFolderName(): ?string
+    {
+        return $this->baseFolderName;
     }
 
     /**
