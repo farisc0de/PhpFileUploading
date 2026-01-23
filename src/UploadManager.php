@@ -387,6 +387,100 @@ class UploadManager
     }
 
     /**
+     * Generate a secure file ID
+     * 
+     * Uses cryptographically secure random bytes combined with high-resolution
+     * timestamp for uniqueness and unpredictability.
+     *
+     * @param string $algorithm Hash algorithm to use (default: sha256)
+     * @return string The generated file ID
+     */
+    public function generateFileId(string $algorithm = 'sha256'): string
+    {
+        $entropy = sprintf(
+            'file-%s-%s-%s',
+            bin2hex(random_bytes(16)),
+            hrtime(true),
+            uniqid('', true)
+        );
+        
+        $this->fileId = hash($algorithm, $entropy);
+        
+        $this->logDebug('Generated file ID: {file_id}', ['file_id' => $this->fileId]);
+        
+        return $this->fileId;
+    }
+
+    /**
+     * Generate a secure user ID
+     * 
+     * Can operate in two modes:
+     * - Session-based: Uses PHP session for persistent user identification
+     * - Stateless: Generates a random ID without session dependency
+     *
+     * @param bool $stateless If true, generates ID without session (for APIs/CLI)
+     * @return string The generated or retrieved user ID
+     * @throws \Farisc0de\PhpFileUploading\Exception\ConfigurationException If sessions are required but unavailable
+     */
+    public function generateUserId(bool $stateless = false): string
+    {
+        // Stateless mode - no session dependency (for APIs, CLI, microservices)
+        if ($stateless) {
+            $entropy = sprintf(
+                'user-%s-%s-%s',
+                bin2hex(random_bytes(16)),
+                hrtime(true),
+                getmypid()
+            );
+            
+            $this->userId = hash('sha256', $entropy);
+            
+            $this->logDebug('Generated stateless user ID: {user_id}', ['user_id' => $this->userId]);
+            
+            return $this->userId;
+        }
+
+        // Session-based mode
+        if (session_status() === PHP_SESSION_DISABLED) {
+            throw \Farisc0de\PhpFileUploading\Exception\ConfigurationException::missingDependency(
+                'sessions',
+                'PHP sessions must be enabled for session-based user ID generation. Use stateless mode for APIs.'
+            );
+        }
+
+        if (session_status() === PHP_SESSION_NONE) {
+            if (!@session_start()) {
+                throw \Farisc0de\PhpFileUploading\Exception\ConfigurationException::missingDependency(
+                    'sessions',
+                    'Failed to start PHP session. Check session configuration or use stateless mode.'
+                );
+            }
+        }
+
+        // Check for existing session user ID
+        if (isset($_SESSION['user_id'])) {
+            $this->userId = $_SESSION['user_id'];
+            $this->logDebug('Retrieved existing user ID from session: {user_id}', ['user_id' => $this->userId]);
+            return $this->userId;
+        }
+
+        // Generate new session-based user ID
+        $entropy = sprintf(
+            'user-%s-%s-%s',
+            session_id(),
+            bin2hex(random_bytes(8)),
+            hrtime(true)
+        );
+        
+        $this->userId = hash('sha256', $entropy);
+        $_SESSION['user_id'] = $this->userId;
+        
+        $this->logDebug('Generated session-based user ID: {user_id}', ['user_id' => $this->userId]);
+        
+        return $this->userId;
+    }
+
+    /**
      * Delete a file
      */
     public function delete(string $path): bool
